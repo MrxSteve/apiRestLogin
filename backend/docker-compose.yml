@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+
+  db:
+    image: mysql:latest # Imagen oficial de MySQL
+    container_name: login_app_mysql # Nombre del contenedor
+    restart: always # Reinicia automáticamente si el contenedor se detiene
+    volumes:
+      - ./db/sql/create_schema.sql:/docker-entrypoint-initdb.d/create_schema.sql # Archivo para crear el esquema
+      - ./db/sql/data.sql:/docker-entrypoint-initdb.d/data.sql # Archivo para cargar datos iniciales
+    environment:
+      - MYSQL_DATABASE=login_app # Nombre de la base de datos
+      - MYSQL_ROOT_PASSWORD=pa55word # Contraseña del usuario root
+    ports:
+      - "3310:3306" # Puerto de MySQL Host:Contenedor
