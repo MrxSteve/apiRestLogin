@@ -5,6 +5,7 @@ import com.login.backend.models.entities.Role;
 import com.login.backend.models.entities.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.mapstruct.factory.Mappers;
 
 import java.util.Set;
@@ -17,7 +18,9 @@ public interface UserMapper {
     @Mapping(source = "roles", target = "roles")
     UserDto toDto(User user);
 
-    // Metodo auxiliar para convertir Set<Role> a Set<String>
+    @Mapping(target = "roles", ignore = true)
+    User toEntity(UserDto userDto);
+
     default Set<String> mapRoles(Set<Role> roles) {
         if (roles == null || roles.isEmpty()) {
             return Set.of(); // Si no hay roles, retorna un Set vacío

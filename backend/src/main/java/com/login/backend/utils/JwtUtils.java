@@ -7,14 +7,15 @@ import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Base64;
 import java.util.Date;
 import java.util.function.Function;
 
 @Component
 @Data
 public class JwtUtils {
-    // Obtener la clave secreta de las variables de entorno
-    @Value("${JWT_SECRET")
+
+    @Value("${JWT_SECRET}")
     private String SECRET_KEY;
 
     private final long TOKEN_VALIDITY = 1000 * 60 * 60 * 10; // 10 horas
@@ -24,7 +25,7 @@ public class JwtUtils {
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + TOKEN_VALIDITY))
-                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .signWith(SignatureAlgorithm.HS256, Base64.getDecoder().decode(SECRET_KEY)) // Decodificar la clave
                 .compact();
     }
 
@@ -49,16 +50,16 @@ public class JwtUtils {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    // extraer un dato del token
-    private  <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+    // Extraer un dato del token
+    private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    // extraer todos los datos del token
+    // Extraer todos los datos del token
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY.getBytes())
+                .setSigningKey(Base64.getDecoder().decode(SECRET_KEY)) // Decodificar la clave
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

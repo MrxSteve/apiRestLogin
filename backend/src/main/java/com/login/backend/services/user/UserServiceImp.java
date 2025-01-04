@@ -23,14 +23,16 @@ public class UserServiceImp implements IUserService {
 
     @Override
     public User registerUser(User user) {
-        // Encriptar la contraseña antes de guardar
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-        // Asignar un rol predeterminado si no viene en el usuario
+        // Asignar un rol predeterminado
         if (user.getRoles() == null || user.getRoles().isEmpty()) {
             Role defaultRole = roleRepository.findByName("USER")
                     .orElseThrow(() -> new RuntimeException("Rol USER no encontrado"));
             user.setRoles(Set.of(defaultRole));
+        }
+
+        // Codificar la contraseña solo si no está codificada
+        if (!user.getPassword().startsWith("$2a$")) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
 
         return userRepository.save(user);
@@ -48,28 +50,25 @@ public class UserServiceImp implements IUserService {
 
     @Override
     public List<User> findAll() {
-        // Devolver todos los usuarios
         return userRepository.findAll();
     }
 
     @Override
     public Optional<User> findById(Long id) {
-        // Buscar usuario por ID
         return userRepository.findById(id);
     }
 
     @Override
     public User updateUser(Long id, UserDto userDto) {
-        // Buscar el usuario existente
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Actualizar los campos permitidos
+        // Actualizar campos básicos
         user.setUsername(userDto.getUsername());
         user.setEmail(userDto.getEmail());
         user.setEnabled(userDto.isEnabled());
 
-        // Actualizar los roles si vienen en el DTO
+        // Actualizar roles si vienen en el DTO
         if (userDto.getRoles() != null) {
             Set<Role> roles = userDto.getRoles().stream()
                     .map(roleName -> roleRepository.findByName(roleName)
@@ -78,16 +77,14 @@ public class UserServiceImp implements IUserService {
             user.setRoles(roles);
         }
 
-        return userRepository.save(user); // Guardar los cambios
+        return userRepository.save(user);
     }
 
     @Override
     public void deleteUser(Long id) {
-        // Verificar si el usuario existe
         if (!userRepository.existsById(id)) {
             throw new RuntimeException("Usuario no encontrado");
         }
-        // Eliminar el usuario
         userRepository.deleteById(id);
     }
 }

@@ -9,9 +9,6 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "password_reset_token")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class PasswordResetToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,4 +23,36 @@ public class PasswordResetToken {
 
     @Column(name = "expiration_date", nullable = false)
     private LocalDateTime expirationDate;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public LocalDateTime getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(LocalDateTime expirationDate) {
+        this.expirationDate = expirationDate;
+    }
 }
