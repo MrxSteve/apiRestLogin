@@ -34,7 +34,7 @@ public class VerificationTokenServiceImp implements IVerificationTokenService {
         VerificationToken verificationToken = new VerificationToken();
         verificationToken.setToken(token);
         verificationToken.setUser(user);
-        verificationToken.setExpirationDate(LocalDateTime.now().plusMinutes(20)); // Token válido por 20 minutos
+        verificationToken.setExpirationDate(LocalDateTime.now().plusHours(1)); // Token válido por 1 hora
         save(verificationToken);
     }
 
@@ -58,7 +58,7 @@ public class VerificationTokenServiceImp implements IVerificationTokenService {
         User user = verificationToken.getUser();
         user.setEnabled(true);
         userRepository.save(user); // Guarda el cambio en la base de datos
-        verificationTokenRepository.delete(verificationToken); // Opcional: eliminar el token después de activación
+        verificationTokenRepository.delete(verificationToken);
         return true;
     }
 

@@ -18,14 +18,14 @@ public class JwtUtils {
     @Value("${JWT_SECRET}")
     private String SECRET_KEY;
 
-    private final long TOKEN_VALIDITY = 1000 * 60 * 60 * 10; // 10 horas
+    private final long TOKEN_VALIDITY = 1000 * 60 * 30; // 30 minutos
 
     public String generateToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + TOKEN_VALIDITY))
-                .signWith(SignatureAlgorithm.HS256, Base64.getDecoder().decode(SECRET_KEY)) // Decodificar la clave
+                .signWith(SignatureAlgorithm.HS256, Base64.getDecoder().decode(SECRET_KEY))
                 .compact();
     }
 

@@ -2,11 +2,14 @@ package com.login.backend.controllers;
 
 import com.login.backend.models.dtos.AuthRequest;
 import com.login.backend.models.dtos.AuthResponse;
+import com.login.backend.models.dtos.RefreshTokenRequest;
 import com.login.backend.models.dtos.UserDto;
+import com.login.backend.models.entities.RefreshToken;
 import com.login.backend.models.entities.Role;
 import com.login.backend.models.entities.User;
 import com.login.backend.models.mappers.UserMapper;
 import com.login.backend.services.mail.EmailService;
+import com.login.backend.services.refresh.IRefreshTokenService;
 import com.login.backend.services.user.IUserService;
 import com.login.backend.services.verification.IVerificationTokenService;
 import com.login.backend.utils.JwtUtils;
@@ -19,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -35,6 +39,7 @@ public class AuthController {
     private final JwtUtils jwtUtils;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final IRefreshTokenService refreshTokenService;
 
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody UserDto userDto) {
@@ -45,13 +50,11 @@ public class AuthController {
             return ResponseEntity.badRequest().body("El correo electrónico ya está en uso");
         }
 
-        // Crear usuario
         User user = UserMapper.INSTANCE.toEntity(userDto);
         user.setPassword(userDto.getPassword());
         user.setEnabled(false);
         userService.registerUser(user);
 
-        // Generar token de activación y enviar correo
         String token = UUID.randomUUID().toString();
         verificationTokenService.createToken(user, token);
 
@@ -70,25 +73,32 @@ public class AuthController {
         return ResponseEntity.ok("Usuario registrado correctamente. Revise su correo para activar su cuenta.");
     }
 
-
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest authRequest) {
         try {
+            // Validar existencia del usuario
             User user = userService.findByUsername(authRequest.getUsername())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            System.out.println("¿Coincide el password?: " + passwordEncoder.matches(authRequest.getPassword(), user.getPassword()));
-
+            // Autenticación
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
             );
 
-            String token = jwtUtils.generateToken(authRequest.getUsername());
+            // Generar tokens
+            String accessToken = jwtUtils.generateToken(authRequest.getUsername());
+            RefreshToken refreshToken = new RefreshToken();
+            refreshToken.setToken(UUID.randomUUID().toString());
+            refreshToken.setUser(user);
+            refreshToken.setExpirationDate(LocalDateTime.now().plusDays(7));
+            refreshTokenService.save(refreshToken);
+
+            // Obtener roles del usuario
             Set<String> roles = user.getRoles().stream()
                     .map(Role::getName)
                     .collect(Collectors.toSet());
 
-            // Obtener la fecha y hora actuales
+            // Obtener la fecha y hora actuales para el correo
             String loginTime = java.time.LocalTime.now().toString();
             String loginDate = java.time.LocalDate.now().toString();
 
@@ -97,11 +107,32 @@ public class AuthController {
             String templatePath = "src/main/resources/templates/welcome-email.html";
             emailService.sendHtmlEmail(user.getEmail(), subject, templatePath, user.getUsername(), loginTime, loginDate);
 
-            return ResponseEntity.ok(new AuthResponse(token, user.getUsername(), roles));
+            // Respuesta con tokens y roles
+            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken.getToken(), user.getUsername(), roles));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(new AuthResponse("Credenciales inválidas", null, null));
+            return ResponseEntity.badRequest().body(new AuthResponse("Credenciales inválidas", null, null, null));
         }
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<AuthResponse> refreshAccessToken(@RequestBody RefreshTokenRequest refreshTokenRequest) {
+        Optional<RefreshToken> optionalToken = refreshTokenService.findByToken(refreshTokenRequest.getRefreshToken());
+
+        if (optionalToken.isEmpty() || optionalToken.get().getExpirationDate().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.badRequest().body(new AuthResponse("Refresh Token inválido o expirado", null, null, null));
+        }
+
+        RefreshToken refreshToken = optionalToken.get();
+        String newAccessToken = jwtUtils.generateToken(refreshToken.getUser().getUsername());
+
+        return ResponseEntity.ok(new AuthResponse(newAccessToken, refreshToken.getToken(), refreshToken.getUser().getUsername(), null));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestParam Long userId) {
+        refreshTokenService.deleteByUserId(userId);
+        return ResponseEntity.ok("Sesión cerrada correctamente");
     }
 
     @GetMapping("/activate/{token}")
@@ -109,21 +140,16 @@ public class AuthController {
         boolean isActivated = verificationTokenService.activateUser(token);
 
         if (isActivated) {
-            // Obtener el usuario asociado al token
             Optional<User> optionalUser = verificationTokenService.validateTokenAndGetUser(token);
 
             if (optionalUser.isPresent()) {
                 User user = optionalUser.get();
 
-                // Enviar correo de confirmación de activación
                 try {
                     String subject = "¡Tu cuenta ha sido activada!";
                     String templatePath = "src/main/resources/templates/account-activated.html";
                     emailService.sendAccountActivatedEmail(user.getEmail(), subject, templatePath, user.getUsername());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return ResponseEntity.internalServerError().body("Cuenta activada, pero hubo un error al leer la plantilla del correo.");
-                } catch (MessagingException e) {
+                } catch (IOException | MessagingException e) {
                     e.printStackTrace();
                     return ResponseEntity.internalServerError().body("Cuenta activada, pero hubo un error al enviar el correo.");
                 }
@@ -134,5 +160,4 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Token inválido o expirado.");
         }
     }
-
 }

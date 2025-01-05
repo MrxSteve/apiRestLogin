@@ -30,7 +30,7 @@ public class PasswordTokenServiceImp implements IPasswordTokenService {
         PasswordResetToken passwordResetToken = new PasswordResetToken();
         passwordResetToken.setToken(token);
         passwordResetToken.setUser(user);
-        passwordResetToken.setExpirationDate(LocalDateTime.now().plusMinutes(10)); // Expiración de 10 minutos
+        passwordResetToken.setExpirationDate(LocalDateTime.now().plusMinutes(15)); // Expiración de 15 minutos
         save(passwordResetToken);
     }
 
