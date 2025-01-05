@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -46,9 +47,9 @@ public class AuthController {
 
         // Crear usuario
         User user = UserMapper.INSTANCE.toEntity(userDto);
-        user.setPassword(userDto.getPassword()); // Dejar la contraseña en texto plano aquí
-        user.setEnabled(false); // Deshabilitar hasta activación
-        userService.registerUser(user); // La codificación se maneja en el servicio
+        user.setPassword(userDto.getPassword());
+        user.setEnabled(false);
+        userService.registerUser(user);
 
         // Generar token de activación y enviar correo
         String token = UUID.randomUUID().toString();
@@ -87,6 +88,15 @@ public class AuthController {
                     .map(Role::getName)
                     .collect(Collectors.toSet());
 
+            // Obtener la fecha y hora actuales
+            String loginTime = java.time.LocalTime.now().toString();
+            String loginDate = java.time.LocalDate.now().toString();
+
+            // Enviar correo electrónico de bienvenida
+            String subject = "Bienvenido " + user.getUsername();
+            String templatePath = "src/main/resources/templates/welcome-email.html";
+            emailService.sendHtmlEmail(user.getEmail(), subject, templatePath, user.getUsername(), loginTime, loginDate);
+
             return ResponseEntity.ok(new AuthResponse(token, user.getUsername(), roles));
         } catch (Exception e) {
             e.printStackTrace();
@@ -94,51 +104,35 @@ public class AuthController {
         }
     }
 
-    // **3. Activación de Cuenta**
     @GetMapping("/activate/{token}")
     public ResponseEntity<String> activateAccount(@PathVariable String token) {
         boolean isActivated = verificationTokenService.activateUser(token);
+
         if (isActivated) {
-            return ResponseEntity.ok("Cuenta activada correctamente.");
+            // Obtener el usuario asociado al token
+            Optional<User> optionalUser = verificationTokenService.validateTokenAndGetUser(token);
+
+            if (optionalUser.isPresent()) {
+                User user = optionalUser.get();
+
+                // Enviar correo de confirmación de activación
+                try {
+                    String subject = "¡Tu cuenta ha sido activada!";
+                    String templatePath = "src/main/resources/templates/account-activated.html";
+                    emailService.sendAccountActivatedEmail(user.getEmail(), subject, templatePath, user.getUsername());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return ResponseEntity.internalServerError().body("Cuenta activada, pero hubo un error al leer la plantilla del correo.");
+                } catch (MessagingException e) {
+                    e.printStackTrace();
+                    return ResponseEntity.internalServerError().body("Cuenta activada, pero hubo un error al enviar el correo.");
+                }
+            }
+
+            return ResponseEntity.ok("Cuenta activada correctamente. Revisa tu correo para la confirmación.");
         } else {
             return ResponseEntity.badRequest().body("Token inválido o expirado.");
         }
     }
 
-    // **4. Recuperación de Contraseña**
-    @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody String email) {
-        User user = userService.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Correo no registrado"));
-
-        String token = UUID.randomUUID().toString();
-        verificationTokenService.createToken(user, token);
-
-        String resetLink = "http://localhost:8080/api/auth/reset-password/" + token;
-        try {
-            emailService.sendHtmlEmail(
-                    user.getEmail(),
-                    "Recuperación de Contraseña",
-                    "src/main/resources/templates/reset-password.html", // Plantilla HTML
-                    resetLink
-            );
-        } catch (MessagingException | IOException e) {
-            return ResponseEntity.internalServerError().body("Error al enviar el correo de recuperación");
-        }
-
-        return ResponseEntity.ok("Correo enviado correctamente. Revisa tu bandeja de entrada.");
-    }
-
-    // **5. Restablecer Contraseña**
-    @PostMapping("/reset-password/{token}")
-    public ResponseEntity<String> resetPassword(@PathVariable String token, @RequestBody String newPassword) {
-        User user = verificationTokenService.validateTokenAndGetUser(token)
-                .orElseThrow(() -> new RuntimeException("Token inválido o expirado"));
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userService.registerUser(user); // Actualizar la contraseña
-        verificationTokenService.deleteToken(token); // Eliminar el token usado
-
-        return ResponseEntity.ok("Contraseña restablecida correctamente.");
-    }
 }

@@ -34,7 +34,7 @@ public class VerificationTokenServiceImp implements IVerificationTokenService {
         VerificationToken verificationToken = new VerificationToken();
         verificationToken.setToken(token);
         verificationToken.setUser(user);
-        verificationToken.setExpirationDate(LocalDateTime.now().plusHours(24)); // Token válido por 24 horas
+        verificationToken.setExpirationDate(LocalDateTime.now().plusMinutes(20)); // Token válido por 20 minutos
         save(verificationToken);
     }
 
@@ -65,6 +65,7 @@ public class VerificationTokenServiceImp implements IVerificationTokenService {
     // Validar un token y devolver el usuario asociado
     @Override
     public Optional<User> validateTokenAndGetUser(String token) {
+        // Buscar el token en la base de datos
         Optional<VerificationToken> optionalToken = findByToken(token);
 
         if (optionalToken.isEmpty()) {
@@ -75,10 +76,12 @@ public class VerificationTokenServiceImp implements IVerificationTokenService {
 
         // Verificar si el token ha expirado
         if (verificationToken.getExpirationDate().isBefore(LocalDateTime.now())) {
+            // Si el token ha expirado, puedes opcionalmente eliminarlo
+            verificationTokenRepository.delete(verificationToken);
             return Optional.empty(); // Token expirado
         }
 
-        // Devolver el usuario asociado
+        // Devolver el usuario asociado al token
         return Optional.of(verificationToken.getUser());
     }
 

@@ -15,4 +15,6 @@ public interface IUserService {
 
     Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
+
+    void updatePassword(User user, String newPassword);
 }

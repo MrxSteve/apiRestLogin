@@ -87,4 +87,12 @@ public class UserServiceImp implements IUserService {
         }
         userRepository.deleteById(id);
     }
+
+    @Override
+    public void updatePassword(User user, String newPassword) {
+        user.setPassword(passwordEncoder.encode(newPassword)); // Usar la nueva contraseña proporcionada
+        userRepository.save(user);
+    }
+
+
 }

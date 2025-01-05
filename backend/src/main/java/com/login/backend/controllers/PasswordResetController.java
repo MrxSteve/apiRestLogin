@@ -1,16 +1,17 @@
 package com.login.backend.controllers;
 
+import com.login.backend.models.dtos.ForgotPasswordRequest;
+import com.login.backend.models.dtos.ResetPasswordRequest;
 import com.login.backend.models.entities.User;
 import com.login.backend.services.mail.EmailService;
+import com.login.backend.services.password.IPasswordTokenService;
 import com.login.backend.services.user.IUserService;
-import com.login.backend.services.verification.IVerificationTokenService;
-import jakarta.mail.MessagingException;
+import jakarta.validation.Valid;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -18,51 +19,65 @@ import java.util.UUID;
 @Data
 public class PasswordResetController {
     private final IUserService userService;
-    private final IVerificationTokenService verificationTokenService;
+    private final IPasswordTokenService passwordTokenService;
     private final EmailService emailService;
-    private final PasswordEncoder passwordEncoder;
 
-    // Recuperar contraseña
-    @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody String email) {
-        User user = userService.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    // **1. Solicitar recuperación de contraseña**
+    @PostMapping("/forgot")
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        String email = request.getEmail().trim();
+        Optional<User> optionalUser = userService.findByEmail(email);
 
-        // Generar el token
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.ok("Si el correo existe, revisa tu bandeja de entrada.");
+        }
+
+        User user = optionalUser.get();
         String token = UUID.randomUUID().toString();
-        verificationTokenService.createToken(user, token);
+        passwordTokenService.createToken(user, token);
 
-        // Enlace de restablecimiento
-        String resetLink = "http://localhost:8080/api/password/reset-password/" + token;
-
+        String resetLink = "http://localhost:8080/api/password/reset/" + token;
         try {
-            // Enviar correo electrónico
             emailService.sendHtmlEmail(
                     user.getEmail(),
-                    "Restablecer contraseña",
+                    "Recuperación de Contraseña",
                     "src/main/resources/templates/reset-password.html",
                     resetLink
             );
-        } catch (MessagingException | IOException e) {
-            return ResponseEntity.internalServerError().body("Error al enviar el correo electrónico");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error al enviar el correo de recuperación");
         }
 
-        return ResponseEntity.ok("Correo electrónico enviado, revise tu bandeja de entrada");
+        return ResponseEntity.ok("Si el correo existe, revisa tu bandeja de entrada.");
     }
 
-    // Restablecer contraseña
-    @PostMapping("/reset-password/{token}")
-    public ResponseEntity<String> resetPassword(@PathVariable String token , @RequestBody String newPassword) {
-        User user = verificationTokenService.validateTokenAndGetUser(token)
-                .orElseThrow(() -> new RuntimeException("Token no valido o expirado"));
+    // **2. Restablecer contraseña**
+    @PostMapping("/reset")
+    public ResponseEntity<String> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        // Validar el token y obtener el usuario asociado
+        User user = passwordTokenService.validateTokenAndGetUser(request.getToken())
+                .orElseThrow(() -> new RuntimeException("Token inválido o expirado"));
 
         // Actualizar la contraseña
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userService.registerUser(user);
+        userService.updatePassword(user, request.getNewPassword());
 
-        // Eliminar el token
-        verificationTokenService.deleteToken(token);
+        // Eliminar el token usado
+        passwordTokenService.deleteToken(request.getToken());
 
-        return ResponseEntity.ok("Contraseña actualizada correctamente");
+        // Enviar correo de confirmación de restablecimiento
+        try {
+            String subject = "Confirmación de Restablecimiento de Contraseña";
+            String templatePath = "src/main/resources/templates/changed-password.html";
+            emailService.sendHtmlEmail(
+                    user.getEmail(),
+                    subject,
+                    templatePath,
+                    user.getUsername()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("La contraseña se restableció, pero hubo un error al enviar el correo de confirmación.");
+        }
+
+        return ResponseEntity.ok("Contraseña restablecida correctamente. Se ha enviado un correo de confirmación.");
     }
 }

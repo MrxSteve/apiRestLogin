@@ -24,11 +24,14 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // Permitir Swagger
-                        .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/password/**").permitAll() // Permitir recuperar contraseña
-                        .anyRequest().authenticated()
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/api/password/**").permitAll() // Permitir las rutas de recuperación de contraseña
+                        .requestMatchers("/api/auth/**").permitAll() // Registro y login
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // Rutas protegidas para ADMIN
+                        .anyRequest().authenticated() // Requiere autenticación para todas las demás rutas
                 )
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -45,3 +48,4 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 }
+
