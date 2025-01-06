@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -94,5 +95,20 @@ public class UserServiceImp implements IUserService {
         userRepository.save(user);
     }
 
+    // Para usuarios de OAuth2
+    public User registerOAuth2User(User user) {
+        // Asignar un rol predeterminado
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            Role defaultRole = roleRepository.findByName("USER")
+                    .orElseThrow(() -> new RuntimeException("Rol USER no encontrado"));
+            user.setRoles(Set.of(defaultRole));
+        }
+
+        // Asignar un marcador único en lugar de una contraseña
+        user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setEnabled(true);
+
+        return userRepository.save(user);
+    }
 
 }

@@ -17,4 +17,6 @@ public interface IUserService {
     Optional<User> findByEmail(String email);
 
     void updatePassword(User user, String newPassword);
+
+    User registerOAuth2User(User user);
 }

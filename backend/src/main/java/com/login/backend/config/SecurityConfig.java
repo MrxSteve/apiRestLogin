@@ -30,8 +30,24 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/api/password/**").permitAll() // Permitir las rutas de recuperación de contraseña
                         .requestMatchers("/api/auth/**").permitAll() // Registro y login
+                        .requestMatchers("/api/oauth2/**").permitAll() // Autenticación con OAuth2
+                        .requestMatchers("/oauth2/authorization/**").permitAll() // Punto de entrada de OAuth2
                         .requestMatchers("/api/admin/**").hasRole("ADMIN") // Rutas protegidas para ADMIN
                         .anyRequest().authenticated() // Requiere autenticación para todas las demás rutas
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(auth -> auth.baseUri("/oauth2/authorization")) // Configurar punto de entrada de OAuth2
+                        .successHandler((request, response, authentication) -> {
+                            // Redirigir la solicitud al controlador /api/oauth2/login después de un inicio de sesión exitoso
+                            request.getRequestDispatcher("/api/oauth2/login").forward(request, response);
+                        })
+                        .failureUrl("/api/oauth2/login-failure") // En caso de fallo
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/api/oauth2/logout")
+                        .logoutSuccessUrl("/api/oauth2/logout-success")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
                 )
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -48,4 +64,3 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 }
-

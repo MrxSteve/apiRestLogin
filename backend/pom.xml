@@ -109,6 +109,12 @@
 			<version>8.0.1.Final</version>
 		</dependency>
 
+		<!-- Dotenv -->
+		<dependency>
+			<groupId>io.github.cdimascio</groupId>
+			<artifactId>java-dotenv</artifactId>
+			<version>5.2.2</version>
+		</dependency>
 
 	</dependencies>
 
