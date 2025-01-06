@@ -1,0 +1,16 @@
+.home {
+    text-align: center;
+    padding: 50px;
+    font-family: Arial, sans-serif;
+  }
+  
+  .home-content h1 {
+    font-size: 36px;
+    color: #333;
+  }
+  
+  .home-content p {
+    font-size: 18px;
+    color: #555;
+  }
+  

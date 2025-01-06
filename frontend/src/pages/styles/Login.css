@@ -1,0 +1,74 @@
+.h1register {
+    font-family: 'Arial', sans-serif; /* Cambia 'Arial' por la fuente que prefieras */
+    font-size: 2em;
+    color: #030253;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .register-message {
+    margin-top: 20px;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+  
+  .login-form {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 300px;
+    padding: 20px;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .success-message {
+    margin-top: 20px;
+    font-size: 16px;
+    color: green;
+  }
+  
+  .register-button {
+    padding: 10px 20px;
+    background-color: #00098b;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+  }
+  
+  .register-button:hover {
+    opacity: 0.9;
+  }
+  
+  .social-login-container {
+    margin: 20px 0;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .error-message {
+    color: red;
+    margin-top: 10px;
+  }
+  
+  .forgot-password, .register-link {
+    color: #00098b;
+    text-decoration: none;
+  }
+  
+  .forgot-password:hover, .register-link:hover {
+    text-decoration: underline;
+  }
