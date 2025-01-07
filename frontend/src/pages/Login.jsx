@@ -70,7 +70,7 @@ const Login = () => {
       {error && <p className="error-message">{error}</p>}
       <p>
         ¿Olvidaste tu contraseña?{" "}
-        <Link to="/reset-password" className="forgot-password">
+        <Link to="/forgot-password" className="forgot-password">
           Haz clic aquí
         </Link>
       </p>
