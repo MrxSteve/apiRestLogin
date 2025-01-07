@@ -36,7 +36,8 @@ public class PasswordResetController {
         String token = UUID.randomUUID().toString();
         passwordTokenService.createToken(user, token);
 
-        String resetLink = "http://localhost:8080/api/password/reset/" + token;
+        // direccion del backend "http://localhost:8080/api/password/reset/" + token
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
         try {
             emailService.sendHtmlEmail(
                     user.getEmail(),
