@@ -6,6 +6,7 @@ import { Register } from './pages/Register';
 import Login from './pages/Login';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+import { OAuth2Callback } from './pages/OAuth2Callback';
 
 function App() {
 
@@ -17,6 +18,7 @@ function App() {
         <Route path="/login" element={<Login />} /> 
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/oauth2/callback" element={<OAuth2Callback />} />
       </Routes>
     </Router>
   );
