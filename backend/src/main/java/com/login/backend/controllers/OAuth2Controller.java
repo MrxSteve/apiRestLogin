@@ -5,11 +5,14 @@ import com.login.backend.models.entities.User;
 import com.login.backend.services.mail.EmailService;
 import com.login.backend.services.oauth.IOAuth2AuthenticationService;
 import com.login.backend.services.user.IUserService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/oauth2")
@@ -20,17 +23,17 @@ public class OAuth2Controller {
     private final EmailService emailService;
 
     @GetMapping("/login")
-    public ResponseEntity<AuthResponse> loginWithOAuth2(OAuth2AuthenticationToken authentication) {
+    public void loginWithOAuth2(OAuth2AuthenticationToken authentication, HttpServletResponse response) {
         try {
             // Obtener información del usuario y proveedor
             OAuth2User oAuth2User = authentication.getPrincipal();
             String provider = authentication.getAuthorizedClientRegistrationId();
 
             // Autenticar con OAuth2
-            AuthResponse response = oAuth2AuthenticationService.authenticateWithOAuth2(oAuth2User, provider);
+            AuthResponse authResponse = oAuth2AuthenticationService.authenticateWithOAuth2(oAuth2User, provider);
 
             // Obtener detalles del usuario autenticado
-            User user = userService.findByUsername(response.getUsername())
+            User user = userService.findByUsername(authResponse.getUsername())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
             // Obtener la fecha y hora actuales para el correo
@@ -42,13 +45,25 @@ public class OAuth2Controller {
             String templatePath = "src/main/resources/templates/welcome-email.html";
             emailService.sendHtmlEmail(user.getEmail(), subject, templatePath, user.getUsername(), loginTime, loginDate);
 
-            return ResponseEntity.ok(response);
+            // Construir la URL de redirección con los tokens
+            String redirectUrl = String.format(
+                    "http://localhost:5173/oauth2/callback?accessToken=%s&refreshToken=%s&username=%s",
+                    authResponse.getAccessToken(),
+                    authResponse.getRefreshToken(),
+                    authResponse.getUsername()
+            );
+
+            // Redirigir al frontend
+            response.sendRedirect(redirectUrl);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(new AuthResponse("Error al autenticar con OAuth2", null, null, null));
+            try {
+                response.sendRedirect("http://localhost:5173/login?error=OAuth2Error");
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
         }
     }
-
 
     @GetMapping("/oauth2-login")
     public ResponseEntity<String> oauth2LoginPage() {

@@ -130,9 +130,19 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@RequestParam Long userId) {
-        refreshTokenService.deleteByUserId(userId);
-        return ResponseEntity.ok("Sesión cerrada correctamente");
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String token) {
+        try {
+            // Extraer el username del token de acceso
+            String username = jwtUtils.extractUsername(token.replace("Bearer ", ""));
+            User user = userService.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            // Eliminar todos los tokens asociados al usuario
+            refreshTokenService.deleteByUserId(user.getId());
+            return ResponseEntity.ok("Sesión cerrada correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al cerrar sesión");
+        }
     }
 
     @GetMapping("/activate/{token}")
